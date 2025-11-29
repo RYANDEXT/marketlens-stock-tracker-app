@@ -15,7 +15,6 @@ import {
 import { signUpWithEmail } from "@/lib/actions/auth.actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { err } from "inngest/types";
 
 const SignUp = () => {
   const router = useRouter();
