@@ -100,26 +100,47 @@ export const sendDailyNewsSummary = inngest.createFunction(
     }[] = [];
 
     for (const { user, articles } of results) {
+      const prompt = NEWS_SUMMARY_EMAIL_PROMPT.replace(
+        "{{newsData}}",
+        JSON.stringify(articles, null, 2)
+      );
+
+      // sanitize step name so it contains safe characters
+      const safeEmail = (user.email || "").replace(/[^a-zA-Z0-9-_]/g, "_");
+      const stepName = `summarize-news-${safeEmail}`;
+
       try {
-        const prompt = NEWS_SUMMARY_EMAIL_PROMPT.replace(
-          "{{newsData}}",
-          JSON.stringify(articles, null, 2)
+        const newsContent: string | null = await step.run(
+          stepName,
+          async () => {
+            try {
+              const response = await step.ai.infer(stepName, {
+                model: step.ai.models.gemini({
+                  model: "gemini-2.5-flash-lite",
+                }),
+                body: {
+                  contents: [{ role: "user", parts: [{ text: prompt }] }],
+                },
+              });
+
+              const part = response.candidates?.[0]?.content?.parts?.[0];
+              const content =
+                (part && "text" in part ? part.text : null) || null;
+              return content;
+            } catch (innerErr) {
+              console.error(
+                "summarize-news inference failed for",
+                user.email,
+                innerErr
+              );
+              return null;
+            }
+          }
         );
-
-        const response = await step.ai.infer(`summarize-news-${user.email}`, {
-          model: step.ai.models.gemini({ model: "gemini-2.5-flash-lite" }),
-          body: {
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-          },
-        });
-
-        const part = response.candidates?.[0]?.content?.parts?.[0];
-        const newsContent =
-          (part && "text" in part ? part.text : null) || "No market news.";
 
         userNewsSummaries.push({ user, newsContent });
       } catch (e) {
-        console.error("Failed to summarize news for : ", user.email);
+        console.error("Failed to run summarize-news step for:", user.email, e);
         userNewsSummaries.push({ user, newsContent: null });
       }
     }
