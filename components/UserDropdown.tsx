@@ -14,15 +14,15 @@ import { LogOut } from "lucide-react";
 import NavItems from "./NavItems";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { useRouter } from "next/navigation";
+import { signOut } from "@/lib/actions/auth.actions";
 
-const UserDropdown = () => {
+const UserDropdown = ({ user }: { user: User }) => {
   const router: AppRouterInstance = useRouter();
 
   const handleSignOut: () => Promise<void> = async () => {
+    await signOut();
     router.push("/sign-in");
   };
-
-  const user = { name: "john", email: "contact@jsmastery.com" };
 
   return (
     <DropdownMenu>
